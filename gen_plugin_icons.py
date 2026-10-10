@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """gen_plugin_icons.py — 为单个插件生成图标三件套（icon.png / icon@2x.png / icon@3x.png）
 

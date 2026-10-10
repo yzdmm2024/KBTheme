@@ -1,4 +1,4 @@
-﻿// KBThemeSettingsController.m — 「原生输入法增强」设置面板根页
+// KBThemeSettingsController.m — 「原生输入法增强」设置面板根页
 #import "KBThemeCommon.h"
 
 @interface KBThemeSettingsController : KBThemeBaseListController

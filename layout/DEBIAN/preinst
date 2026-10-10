@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 # 安装前清理旧版可能存在的失效入口
 # 如果从未用过，可删掉下一行；记得 git update-index --chmod=+x 本文件
 rm -f "/var/jb/Library/PreferenceLoader/Preferences/__OLD_ENTRY__.plist" 2>/dev/null || true

@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """LocSim 解锁码生成器 (与 dylib 算法完全一致)"""
 import argparse
 import hashlib

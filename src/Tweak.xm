@@ -1,4 +1,4 @@
-﻿// KBTheme Tweak.xm v1.0.0
+// KBTheme Tweak.xm v1.0.0
 // iOS 原生键盘换皮肤：5 个预设主题 + 自定义圆角/间距/颜色
 //
 // hook UIKBKeyplaneView.layoutSubviews（整体位移）+ UIKBKeyView.layoutSubviews（逐键换肤）
@@ -10,40 +10,6 @@
 #import <UIKit/UIKit.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <objc/runtime.h>
-
-// ======== 加密保护（inject_security.snippet 模板）========
-// 简化版：XOR + ptrace 反调试 + Frida 检测
-#include <sys/ptrace.h>
-#include <sys/types.h>
-#include <sys/sysctl.h>
-#include <unistd.h>
-#include <string.h>
-
-static void _kb_enable_protection(void) {
-    @autoreleasepool {
-        // ptrace 反调试
-        ptrace(PT_DENY_ATTACH, 0, NULL, 0);
-        // Frida 检测（遍历进程名）
-        int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0 };
-        size_t size = 0;
-        sysctl(mib, 4, NULL, &size, NULL, 0);
-        if (size > 0) {
-            struct kinfo_proc *procs = malloc(size);
-            if (procs && sysctl(mib, 4, procs, &size, NULL, 0) == 0) {
-                int count = size / sizeof(struct kinfo_proc);
-                for (int i = 0; i < count; i++) {
-                    if (strstr(procs[i].kp_proc.p_comm, "frida") ||
-                        strstr(procs[i].kp_proc.p_comm, "gum-js-loop")) {
-                        // 发现 Frida，标记（不 exit，避免误杀）
-                        break;
-                    }
-                }
-            }
-            free(procs);
-        }
-    }
-}
-// ========================================================
 
 #define KBT_SUITE @"com.yzdmm.kbtheme"
 #define KBT_NOTI   "com.yzdmm.kbtheme.prefschanged"
@@ -228,9 +194,6 @@ static void KBTNotificationCB(CFNotificationCenterRef center, void *observer,
 
 __attribute__((constructor))
 static void _kbt_init(void) {
-    // 加密保护
-    _kb_enable_protection();
-
     // 延迟 2 秒注册通知（避免 constructor 阻塞）
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC),
                    dispatch_get_main_queue(), ^{
