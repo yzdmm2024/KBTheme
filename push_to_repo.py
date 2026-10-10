@@ -44,15 +44,27 @@ def get_raw(path):
     return gh("repositories/%s/contents/%s?ref=main" % (repo_id(), path), raw=True)
 
 def get_sha(path):
-    return json.loads(gh("repositories/%s/contents/%s?ref=main" % (repo_id(), path)))["sha"]
+    return json.loads(gh(["-H", "Cache-Control: no-cache", "repositories/%s/contents/%s?ref=main" % (repo_id(), path)]))["sha"]
 
-def put_file(path, data, msg, sha=None):
+def put_file(path, data, msg, sha=None, _retry=3):
     payload = {"message": msg, "content": base64.b64encode(data).decode()}
-    if sha: payload["sha"] = sha
-    gh("repositories/%s/contents/%s" % (repo_id(), path), payload=payload)
+    if sha is None:
+        try:
+            sha = get_sha(path)   # 文件已存在 -> 取当前 blob sha（乐观锁）；不存在则创建
+        except Exception:
+            sha = None
+    if sha:
+        payload["sha"] = sha
+    try:
+        gh(["-X", "PUT", "repositories/%s/contents/%s" % (repo_id(), path)], payload=payload)
+    except RuntimeError as e:
+        # 并发修改导致 sha 不匹配：重新取 sha 重试
+        if _retry > 0 and "does not match" in str(e):
+            return put_file(path, data, msg, sha=None, _retry=_retry - 1)
+        raise
 
 def del_file(path, sha, msg):
-    gh("repositories/%s/contents/%s" % (repo_id(), path), payload={"message": msg, "sha": sha})
+    gh(["-X", "DELETE", "repositories/%s/contents/%s" % (repo_id(), path)], payload={"message": msg, "sha": sha})
 
 def parse_control(data):
     import io, tarfile
@@ -66,7 +78,7 @@ def parse_control(data):
         return name, buf[data_off:data_off+size], data_off+size+(size % 2)
     m1, _, p = read_member(data, p)
     m2, ctgz, p = read_member(data, p)
-    if m2 == "control.tar.gz/":
+    if m2 == "control.tar.gz":
         buf = io.BytesIO(ctgz)
         with tarfile.open(fileobj=buf, mode="r:gz") as tar:
             ctrl = tar.extractfile("./control").read().decode("utf-8", errors="replace")
@@ -155,10 +167,10 @@ def main():
     put_file("debs/%s" % filename, data, "%s %s" % (pkg_name, new_ver))
 
     print("[5/5] 回写 Packages/Packages.gz/Packages.bz2/Release")
-    put_file("Packages", pkgs_bytes, "更新 Packages (%s %s)" % (pkg_name, new_ver), sha=get_sha("Packages"))
-    put_file("Packages.gz", gz, "更新 Packages.gz (%s %s)" % (pkg_name, new_ver), sha=get_sha("Packages.gz"))
-    put_file("Packages.bz2", bz2d, "更新 Packages.bz2 (%s %s)" % (pkg_name, new_ver), sha=get_sha("Packages.bz2"))
-    put_file("Release", new_release.encode("utf-8"), "更新 Release (%s %s)" % (pkg_name, new_ver), sha=get_sha("Release"))
+    put_file("Packages", pkgs_bytes, "更新 Packages (%s %s)" % (pkg_name, new_ver))
+    put_file("Packages.gz", gz, "更新 Packages.gz (%s %s)" % (pkg_name, new_ver))
+    put_file("Packages.bz2", bz2d, "更新 Packages.bz2 (%s %s)" % (pkg_name, new_ver))
+    put_file("Release", new_release.encode("utf-8"), "更新 Release (%s %s)" % (pkg_name, new_ver))
 
     # 清理同包旧 deb（避免 debs/ 越堆越多、regen 又加回来）
     try:

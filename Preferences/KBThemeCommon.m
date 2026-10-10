@@ -125,7 +125,7 @@ void KBThemeSetLetterColor(NSInteger index, NSString *hex) {
 - (PSSpecifier *)kbtColorRow:(NSString *)name key:(NSString *)key def:(NSString *)def {
     PSSpecifier *s = [PSSpecifier preferenceSpecifierNamed:name
         target:self set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil];
-    [s setProperty:@"KBThemeColorCell" forKey:@"cellClass"];
+    [s setProperty:[KBThemeColorCell class] forKey:@"cellClass"];
     [s setProperty:@"key" forKey:@"KBThemeMode"];
     [s setProperty:key forKey:@"KBThemeKey"];
     [s setProperty:def forKey:@"KBThemeDefault"];
@@ -135,7 +135,7 @@ void KBThemeSetLetterColor(NSInteger index, NSString *hex) {
 - (PSSpecifier *)kbtLetterRow:(NSString *)letter index:(NSInteger)index {
     PSSpecifier *s = [PSSpecifier preferenceSpecifierNamed:letter
         target:self set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil];
-    [s setProperty:@"KBThemeColorCell" forKey:@"cellClass"];
+    [s setProperty:[KBThemeColorCell class] forKey:@"cellClass"];
     [s setProperty:@"letter" forKey:@"KBThemeMode"];
     [s setProperty:@(index) forKey:@"KBThemeLetterIndex"];
     [s setProperty:KBTHEME_DEF_LETTER_BG forKey:@"KBThemeDefault"];

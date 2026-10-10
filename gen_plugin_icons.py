@@ -106,7 +106,9 @@ def main():
 
     os.makedirs(args.outdir, exist_ok=True)
     img = make_icon(GLYPH_FNS[args.glyph], hex2rgb(args.top), hex2rgb(args.bot))
-    sizes = [("icon.png", 60), ("icon@2x.png", 120), ("icon@3x.png", 180)]
+    # iOS 设置图标标准：29pt（@1x=29 / @2x=58 / @3x=87）。
+    # 之前用 60/120/180（=60pt）会导致设置里图标比系统项大一倍、顶到行的左上角。
+    sizes = [("icon.png", 29), ("icon@2x.png", 58), ("icon@3x.png", 87)]
     for fname, t in sizes:
         im = img.resize((t, t), Image.LANCZOS)
         im.save(os.path.join(args.outdir, fname))

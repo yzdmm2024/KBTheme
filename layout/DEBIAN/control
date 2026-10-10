@@ -1,6 +1,6 @@
 Package: com.yzdmm.kbtheme
 Name: 原生输入法增强
-Version: 1.1.0
+Version: 1.1.1
 Architecture: iphoneos-arm64
 Depends: firmware (>= 16.0), mobilesubstrate, preferenceloader
 Maintainer: yzdmm
