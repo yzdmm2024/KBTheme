@@ -1,0 +1,13 @@
+﻿obj/
+build/
+build_tmp/
+packages/
+*.deb
+*.dylib
+*.o
+*.log
+.DS_Store
+_codes_data.c
+_dylib_symbols.txt
+_ci_archive/
+_ci_dl/

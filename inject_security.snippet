@@ -1,0 +1,106 @@
+﻿// ==================================================================
+// inject_security.snippet — 加密 + 反调试 + 反注入 代码片段
+// 使用方法：把本文件内容复制到 Tweak.xm 的顶部（#import 之后）
+//
+// ⚠️ 构建前必须先跑 preprocess.py 处理 Tweak.xm：
+//     python preprocess.py src/Tweak.xm src/Tweak_processed.xm
+//     然后 Makefile 里把 src/Tweak.xm 改成 src/Tweak_processed.xm
+//     （preprocess.py 会把 __PRE("中文字符串") 转成 XOR 加密字节数组）
+//
+// 密钥说明：CHARSET 必须和 gen_license.py 里的一致
+// ==================================================================
+
+#import <CommonCrypto/CommonHMAC.h>
+#import <CommonCrypto/CommonDigest.h>
+#import <dlfcn.h>
+#import <sys/sysctl.h>
+#import <sys/types.h>
+#import <unistd.h>
+#import <stdlib.h>
+#import <string.h>
+
+// ======== 0. XOR 字符串加密（密钥 0xA7） ========
+// 在源码里用 __PRE("需要加密的字符串") 包裹敏感字符串
+// preprocess.py 会把它转成下面这个宏的实际值（编译期展开）
+#ifndef __PRE
+#define __PRE(s) _xor_##__LINE__  // 占位，preprocess.py 构建前替换
+#endif
+#define _DC(b) ({ NSString *_s = [NSMutableString string]; \
+    for (int _i = 0; (_b)[_i]; _i++) [(NSMutableString *)_s appendFormat:@"%c", (_b)[_i] ^ 0xA7]; _s; })
+
+// ======== 1. SHA256 解锁码验证（和 gen_license.py 算法一致） ========
+#define _CHARSET "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz"
+
+static NSString *_genCode(NSString *udid) {
+    const char *data = [udid UTF8String];
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+    CC_SHA256(data, (CC_LONG)strlen(data), digest);
+    NSString *cs = [NSString stringWithUTF8String:_CHARSET];
+    char out[16] = {0};
+    NSUInteger clen = cs.length;
+    for (int i = 0; i < 15; i++) {
+        int idx = ((digest[i * 2 % 32] << 8) | digest[(i * 2 + 1) % 32]) % clen;
+        out[i] = [cs characterAtIndex:idx];
+    }
+    return [NSString stringWithUTF8String:out];
+}
+
+// ======== 2. ptrace + sysctl 反调试 ========
+static void _antiDebug(void) {
+    // ptrace PT_DENY_ATTACH
+    void *handle = dlopen("/usr/lib/libsystem_kernel.dylib", RTLD_LAZY);
+    if (handle) {
+        typedef int (*ptrace_fn)(int, pid_t, void *, int);
+        ptrace_fn pt = (ptrace_fn)dlsym(handle, "ptrace");
+        if (pt) pt(31, 0, 0, 0);  // PT_DENY_ATTACH
+        dlclose(handle);
+    }
+    // sysctl P_TRACED 检测
+    int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid() };
+    struct kinfo_proc kp; size_t len = sizeof(kp);
+    if (sysctl(mib, 4, &kp, &len, NULL, 0) == 0) {
+        if (kp.kp_proc.p_flag & P_TRACED) {
+            _exit(0);
+        }
+    }
+}
+
+// ======== 3. Frida 检测 ========
+static void _antiFrida(void) {
+    const char *paths[] = {
+        "/usr/lib/frida/frida-gadget.dylib",
+        "/var/jb/usr/lib/frida-gadget.dylib",
+        "/Library/MobileSubstrate/MobileSubstrate.dylib",
+        NULL
+    };
+    for (int i = 0; paths[i]; i++) {
+        FILE *f = fopen(paths[i], "r");
+        if (f) { fclose(f); _exit(0); }
+    }
+}
+
+// ======== 4. DYLD_INSERT_LIBRARIES 白名单检查 ========
+static void _antiInject(void) {
+    char *env = getenv("DYLD_INSERT_LIBRARIES");
+    if (env && !strstr(env, "KBTheme")) {
+        _exit(0);
+    }
+}
+
+// ======== 5. 一键启用全部保护 ========
+static void _enableAllProtection(void) {
+    @try {
+        _antiDebug();
+        _antiFrida();
+        _antiInject();
+    } @catch (NSException *e) { /* 吞没 */ }
+}
+
+// ======== 用法：在 constructor 里开头调一次 ========
+/*
+__attribute__((constructor))
+static void KBTheme_init(void) {
+    _enableAllProtection();  // ← 加这一行，所有保护自动启用
+    // ... 原有逻辑
+}
+*/
