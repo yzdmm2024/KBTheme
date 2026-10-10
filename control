@@ -1,9 +1,9 @@
 Package: com.yzdmm.kbtheme
-Name: 键盘换肤
-Version: 1.0.0
+Name: 原生输入法增强
+Version: 1.1.0
 Architecture: iphoneos-arm64
 Depends: firmware (>= 16.0), mobilesubstrate, preferenceloader
 Maintainer: yzdmm
 Author: yzdmm
 Section: Tweaks
-Description: iOS 原生键盘换皮肤（5 个预设主题 + 自定义圆角/间距）
+Description: iOS 原生输入法增强（键盘背景/整键盘透明/按键配色/彩虹皮肤/字母渐变/按键形状/工具栏布局）
