@@ -127,9 +127,14 @@ static void KBTStyleKey(UIKBKeyView *v) {
         f = CGRectInset(f, gx / 2.0, gy / 2.0);
         if (f.size.width > 1.0 && f.size.height > 1.0) v.frame = f;
 
-        // 颜色 + 圆角（走预设主题）
+        // 颜色 + 圆角（仅在显式设置了旧版 theme 键时才套用，避免未配置时污染键盘）
         CGFloat r, g, b, a, corner;
-        NSString *theme = KBTString(@"theme", @"classic");
+        NSString *theme = KBTString(@"theme", nil);
+        if (theme == nil) {
+            v.layer.cornerRadius = 0;
+            v.layer.masksToBounds = NO;
+            return;
+        }
         KBTPresetTheme(theme, &r, &g, &b, &a, &corner);
 
         v.backgroundColor = [UIColor colorWithRed:r green:g blue:b alpha:a];
@@ -149,7 +154,12 @@ static void KBTStyleKey(UIKBKeyView *v) {
             self.transform = CGAffineTransformIdentity;
             return;
         }
-        self.transform = CGAffineTransformMakeTranslation(0.0, KBTFloat(@"offsetY", 40.0));
+        CGFloat off = KBTFloat(@"offsetY", 0.0);
+        if (off == 0.0) {
+            self.transform = CGAffineTransformIdentity;
+            return;
+        }
+        self.transform = CGAffineTransformMakeTranslation(0.0, off);
     } @catch (NSException *e) {}
 }
 
